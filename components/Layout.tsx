@@ -69,11 +69,11 @@ const Layout: React.FC<LayoutProps> = ({
       )}
 
       {/* Responsive Sidebar */}
-      <aside className={`no-print fixed lg:sticky top-0 h-screen bg-white border-r border-slate-200 z-50 transition-all duration-300 ease-in-out
+      <aside className={`no-print fixed lg:sticky top-0 h-[100dvh] bg-white border-r border-slate-200 z-50 transition-all duration-300 ease-in-out
         ${isSidebarOpen ? 'translate-x-0 w-72' : '-translate-x-full w-72'} 
         lg:translate-x-0 ${isDesktopCollapsed ? 'lg:w-20' : 'lg:w-64'}`}>
         
-        <div className="p-4 h-full flex flex-col">
+        <div className="p-4 h-full flex flex-col overflow-y-auto scrollbar-hide">
           <div className="flex items-center justify-between mb-8 px-2">
             <div className="flex items-center gap-3 overflow-hidden">
               <div className="w-10 h-10 rounded-xl bg-green-600 flex items-center justify-center text-white font-bold text-xs shadow-lg shadow-green-200 shrink-0">
@@ -148,26 +148,26 @@ const Layout: React.FC<LayoutProps> = ({
       {/* Content Wrapper */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="no-print h-16 bg-white border-b border-slate-200 sticky top-0 z-30 px-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 md:gap-4 flex-1">
+          <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
             <button 
               onClick={() => setIsSidebarOpen(true)}
-              className="p-2 hover:bg-slate-100 rounded-lg lg:hidden text-slate-600"
+              className="p-2 hover:bg-slate-100 rounded-lg lg:hidden text-slate-600 shrink-0"
             >
               <Menu size={22} />
             </button>
             <button 
               onClick={() => setIsDesktopCollapsed(!isDesktopCollapsed)}
-              className="p-2 hover:bg-slate-100 rounded-lg hidden lg:block text-slate-400"
+              className="p-2 hover:bg-slate-100 rounded-lg hidden lg:block text-slate-400 shrink-0"
             >
               <Menu size={20} />
             </button>
             
             {role !== 'Student' && (
-              <div className="relative flex-1 max-w-xs md:max-w-md">
+              <div className="relative flex-1 max-w-[160px] sm:max-w-xs md:max-w-md">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input 
                   type="text"
-                  placeholder="Search students..."
+                  placeholder="Search..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-full py-2 pl-9 pr-4 focus:outline-none focus:ring-2 focus:ring-green-500/10 focus:border-green-500 transition-all text-sm h-10"
@@ -176,12 +176,19 @@ const Layout: React.FC<LayoutProps> = ({
             )}
           </div>
 
-          <div className="flex items-center gap-1 md:gap-3 ml-2">
-            <button className="p-2 text-slate-400 hover:bg-slate-100 rounded-full relative shrink-0">
+          <div className="flex items-center gap-1 md:gap-3 ml-2 shrink-0">
+            <button className="p-2 text-slate-400 hover:bg-slate-100 rounded-full relative hidden sm:block">
               <Bell size={20} />
               <span className="absolute top-2 right-2.5 w-2 h-2 bg-red-500 border-2 border-white rounded-full"></span>
             </button>
             <div className="h-8 w-[1px] bg-slate-200 mx-1 hidden sm:block"></div>
+            <button 
+              onClick={onLogout}
+              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg lg:hidden transition-all"
+              title="Logout"
+            >
+              <LogOut size={20} />
+            </button>
             <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold border-2 border-white shadow-sm shrink-0 ${
               role === 'Student' ? 'bg-indigo-100 text-indigo-700' : 'bg-green-100 text-green-700'
             }`}>
