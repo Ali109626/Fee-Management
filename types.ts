@@ -11,22 +11,33 @@ export enum PaymentMethod {
   ONLINE = 'Online'
 }
 
+export interface Admin {
+  id: string;
+  name: string;
+  email: string;
+  schoolName: string;
+  password?: string;
+}
+
 export interface Student {
   id: string;
+  adminId: string; // To associate with a specific school/admin
   name: string;
   fatherName: string;
   phone: string;
   address?: string;
+  image?: string;
   grade: string;
   section: string;
   rollNumber: string;
   portalId: string;
   admissionDate: string;
-  monthlyFee: number; // The specific monthly fee assigned to this student
+  monthlyFee: number;
 }
 
 export interface FeeRecord {
   id: string;
+  adminId: string; // To associate with a specific school/admin
   studentId: string;
   month: string;
   year: number;

@@ -18,15 +18,15 @@ export const GRADE_FEES: Record<string, number> = {
 };
 
 export const INITIAL_STUDENTS: Student[] = [
-  { id: 'ST001', name: 'Muhammad Ahmed', fatherName: 'Abdul Rehman', phone: '03001234567', grade: 'Grade 5', section: 'A', rollNumber: 'G5-101', portalId: 'APS-G5-101', admissionDate: '2023-04-10', monthlyFee: 2500 },
-  { id: 'ST002', name: 'Fatima Zahra', fatherName: 'Muhammad Yousaf', phone: '03127654321', grade: 'Grade 5', section: 'B', rollNumber: 'G5-102', portalId: 'APS-G5-102', admissionDate: '2023-04-12', monthlyFee: 2500 },
-  { id: 'ST003', name: 'Ahmed Raza', fatherName: 'Ghulam Abbas', phone: '03219876543', grade: 'Grade 6', section: 'A', rollNumber: 'G6-201', portalId: 'APS-G6-201', admissionDate: '2023-04-15', monthlyFee: 2800 },
-  { id: 'ST004', name: 'Zainab Bibi', fatherName: 'Sajid Mahmood', phone: '03334567890', grade: 'Grade 6', section: 'A', rollNumber: 'G6-202', portalId: 'APS-G6-202', admissionDate: '2023-04-20', monthlyFee: 2800 },
-  { id: 'ST005', name: 'Umar Farooq', fatherName: 'Tariq Javed', phone: '03451234567', grade: 'Grade 7', section: 'C', rollNumber: 'G7-301', portalId: 'APS-G7-301', admissionDate: '2023-05-01', monthlyFee: 3000 },
+  { id: 'ST001', adminId: 'default-admin', name: 'Muhammad Ahmed', fatherName: 'Abdul Rehman', phone: '03001234567', grade: 'Grade 5', section: 'A', rollNumber: 'G5-101', portalId: 'APS-G5-101', admissionDate: '2023-04-10', monthlyFee: 2500 },
+  { id: 'ST002', adminId: 'default-admin', name: 'Fatima Zahra', fatherName: 'Muhammad Yousaf', phone: '03127654321', grade: 'Grade 5', section: 'B', rollNumber: 'G5-102', portalId: 'APS-G5-102', admissionDate: '2023-04-12', monthlyFee: 2500 },
+  { id: 'ST003', adminId: 'default-admin', name: 'Ahmed Raza', fatherName: 'Ghulam Abbas', phone: '03219876543', grade: 'Grade 6', section: 'A', rollNumber: 'G6-201', portalId: 'APS-G6-201', admissionDate: '2023-04-15', monthlyFee: 2800 },
+  { id: 'ST004', adminId: 'default-admin', name: 'Zainab Bibi', fatherName: 'Sajid Mahmood', phone: '03334567890', grade: 'Grade 6', section: 'A', rollNumber: 'G6-202', portalId: 'APS-G6-202', admissionDate: '2023-04-20', monthlyFee: 2800 },
+  { id: 'ST005', adminId: 'default-admin', name: 'Umar Farooq', fatherName: 'Tariq Javed', phone: '03451234567', grade: 'Grade 7', section: 'C', rollNumber: 'G7-301', portalId: 'APS-G7-301', admissionDate: '2023-05-01', monthlyFee: 3000 },
 ];
 
 export const INITIAL_FEES: FeeRecord[] = [
-  { id: 'F001', studentId: 'ST001', month: 'October', year: 2023, totalAmount: 2500, paidAmount: 2500, status: PaymentStatus.PAID, paymentDate: '2023-10-05', method: undefined, receiptNumber: 'RCP-1001' },
-  { id: 'F002', studentId: 'ST002', month: 'October', year: 2023, totalAmount: 2500, paidAmount: 1000, status: PaymentStatus.PARTIAL, paymentDate: '2023-10-07', method: undefined, receiptNumber: 'RCP-1002' },
-  { id: 'F003', studentId: 'ST003', month: 'October', year: 2023, totalAmount: 2800, paidAmount: 0, status: PaymentStatus.UNPAID },
+  { id: 'F001', adminId: 'default-admin', studentId: 'ST001', month: 'October', year: 2023, totalAmount: 2500, paidAmount: 2500, status: PaymentStatus.PAID, paymentDate: '2023-10-05', method: undefined, receiptNumber: 'RCP-1001' },
+  { id: 'F002', adminId: 'default-admin', studentId: 'ST002', month: 'October', year: 2023, totalAmount: 2500, paidAmount: 1000, status: PaymentStatus.PARTIAL, paymentDate: '2023-10-07', method: undefined, receiptNumber: 'RCP-1002' },
+  { id: 'F003', adminId: 'default-admin', studentId: 'ST003', month: 'October', year: 2023, totalAmount: 2800, paidAmount: 0, status: PaymentStatus.UNPAID },
 ];

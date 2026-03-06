@@ -43,8 +43,12 @@ const StudentPortal: React.FC<StudentPortalProps> = ({ student, fees }) => {
       {/* Welcome Header */}
       <div className="bg-white rounded-[2rem] p-8 shadow-xl shadow-slate-200/50 border border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-6">
-          <div className="w-20 h-20 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-indigo-200">
-            <User size={40} />
+          <div className="w-20 h-20 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-indigo-200 overflow-hidden">
+            {student.image ? (
+              <img src={student.image} alt={student.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            ) : (
+              <User size={40} />
+            )}
           </div>
           <div>
             <h1 className="text-3xl font-black text-slate-800 tracking-tight">Welcome, {student.name}</h1>
@@ -104,6 +108,17 @@ const StudentPortal: React.FC<StudentPortalProps> = ({ student, fees }) => {
                   <p className="text-slate-800 font-bold">{student.admissionDate}</p>
                 </div>
               </div>
+              {student.address && (
+                <div className="flex items-start gap-4 p-4 bg-slate-50 rounded-2xl">
+                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-indigo-600 shadow-sm shrink-0">
+                    <MapPin size={20} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Home Address</p>
+                    <p className="text-slate-800 font-bold text-xs leading-relaxed">{student.address}</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

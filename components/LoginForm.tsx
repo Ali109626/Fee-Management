@@ -1,15 +1,16 @@
 
 import React, { useState } from 'react';
 import { Lock, Mail, AlertCircle, Eye, EyeOff, ShieldCheck, GraduationCap, UserCircle } from 'lucide-react';
-import { Student, UserRole } from '../types';
+import { Student, UserRole, Admin } from '../types';
 
 interface LoginFormProps {
-  onLogin: (success: boolean, role?: UserRole, student?: Student | null) => void;
+  onLogin: (success: boolean, role?: UserRole, student?: Student | null, admin?: Admin | null) => void;
   onSwitchToRegister: () => void;
   students: Student[];
+  admins: Admin[];
 }
 
-const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onSwitchToRegister, students }) => {
+const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onSwitchToRegister, students, admins }) => {
   const [loginType, setLoginType] = useState<'Admin' | 'Student'>('Admin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -23,14 +24,12 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onSwitchToRegister, stud
     setError('');
     setIsLoading(true);
 
-    // Simulate network delay for better UX feel
     setTimeout(() => {
       if (loginType === 'Admin') {
-        const savedAdminStr = localStorage.getItem('aps_admin_user');
-        const savedAdmin = savedAdminStr ? JSON.parse(savedAdminStr) : null;
+        const admin = admins.find(a => a.email === email && a.password === password);
 
-        if (savedAdmin && email === savedAdmin.email && password === savedAdmin.password) {
-          onLogin(true, 'Admin');
+        if (admin) {
+          onLogin(true, 'Admin', null, admin);
         } else {
           setError('Invalid admin email or password. Please try again.');
           setIsLoading(false);
@@ -57,7 +56,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onSwitchToRegister, stud
             <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-white font-black text-3xl shadow-xl mx-auto mb-6 transition-colors ${
               loginType === 'Admin' ? 'bg-green-600 shadow-green-200' : 'bg-indigo-600 shadow-indigo-200'
             }`}>
-              APS
+              SMS
             </div>
             <h1 className="text-2xl font-black text-slate-800 tracking-tight">
               {loginType === 'Admin' ? 'Admin Portal' : 'Student Portal'}
@@ -114,7 +113,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onSwitchToRegister, stud
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="w-full pl-12 pr-4 py-4 rounded-2xl border-2 border-slate-50 bg-slate-50/30 text-slate-800 font-bold text-sm focus:border-green-500 focus:bg-white outline-none transition-all placeholder:text-slate-300"
-                      placeholder="admin@aps.edu"
+                      placeholder="admin@school.edu"
                     />
                   </div>
                 </div>
@@ -156,7 +155,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onSwitchToRegister, stud
                     value={portalId}
                     onChange={(e) => setPortalId(e.target.value)}
                     className="w-full pl-12 pr-4 py-4 rounded-2xl border-2 border-slate-50 bg-slate-50/30 text-slate-800 font-bold text-sm focus:border-indigo-500 focus:bg-white outline-none transition-all placeholder:text-slate-300"
-                    placeholder="APS-G5-101"
+                    placeholder="SCHOOL-ID-101"
                   />
                 </div>
                 <p className="text-[10px] text-slate-400 font-medium ml-1">Ask your school administrator for your unique Portal ID.</p>
@@ -195,7 +194,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onSwitchToRegister, stud
           <div className="px-8 pb-10 text-center">
             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
               Proprietary Management Software<br />
-              © 2024 Ali Public School Systems
+              © 2024 School Management Systems
             </p>
           </div>
         </div>

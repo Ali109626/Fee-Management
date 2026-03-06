@@ -22,6 +22,7 @@ interface LayoutProps {
   searchTerm: string;
   setSearchTerm: (term: string) => void;
   onLogout: () => void;
+  schoolName: string;
 }
 
 const Layout: React.FC<LayoutProps> = ({ 
@@ -32,10 +33,15 @@ const Layout: React.FC<LayoutProps> = ({
   setRole,
   searchTerm,
   setSearchTerm,
-  onLogout
+  onLogout,
+  schoolName
 }) => {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [isDesktopCollapsed, setIsDesktopCollapsed] = React.useState(false);
+
+  const getInitials = (name: string) => {
+    return name.split(' ').map(word => word[0]).join('').substring(0, 3).toUpperCase();
+  };
 
   const navItems = role === 'Student' ? [
     { id: 'portal', label: 'My Portal', icon: LayoutDashboard },
@@ -70,11 +76,11 @@ const Layout: React.FC<LayoutProps> = ({
         <div className="p-4 h-full flex flex-col">
           <div className="flex items-center justify-between mb-8 px-2">
             <div className="flex items-center gap-3 overflow-hidden">
-              <div className="w-10 h-10 rounded-xl bg-green-600 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-green-200 shrink-0">
-                APS
+              <div className="w-10 h-10 rounded-xl bg-green-600 flex items-center justify-center text-white font-bold text-xs shadow-lg shadow-green-200 shrink-0">
+                {getInitials(schoolName)}
               </div>
               {(!isDesktopCollapsed || isSidebarOpen) && (
-                <span className="font-bold text-lg tracking-tight text-slate-800 whitespace-nowrap">Ali Public School</span>
+                <span className="font-bold text-sm tracking-tight text-slate-800 truncate">{schoolName}</span>
               )}
             </div>
             <button 

@@ -7,9 +7,10 @@ interface ReceiptProps {
   fee: FeeRecord;
   student: Student;
   onClose: () => void;
+  schoolName: string;
 }
 
-const Receipt: React.FC<ReceiptProps> = ({ fee, student, onClose }) => {
+const Receipt: React.FC<ReceiptProps> = ({ fee, student, onClose, schoolName }) => {
   // Add ESC key listener to close the receipt
   useEffect(() => {
     const handleEsc = (event: KeyboardEvent) => {
@@ -21,6 +22,10 @@ const Receipt: React.FC<ReceiptProps> = ({ fee, student, onClose }) => {
     return () => window.removeEventListener('keydown', handleEsc);
   }, [onClose]);
 
+  const getInitials = (name: string) => {
+    return name.split(' ').map(word => word[0]).join('').substring(0, 3).toUpperCase();
+  };
+
   const handlePrint = () => {
     // Small timeout ensures any active focus or mobile keyboard issues are resolved before printing
     setTimeout(() => {
@@ -29,12 +34,12 @@ const Receipt: React.FC<ReceiptProps> = ({ fee, student, onClose }) => {
   };
 
   const handleShare = async () => {
-    const shareText = `Fee Receipt: ${fee.receiptNumber}\nStudent: ${student.name}\nMonth: ${fee.month} ${fee.year}\nAmount Paid: Rs. ${fee.paidAmount}\nRemaining Balance: Rs. ${fee.totalAmount - fee.paidAmount}\nThank you, Ali Public School.`;
+    const shareText = `Fee Receipt: ${fee.receiptNumber}\nStudent: ${student.name}\nMonth: ${fee.month} ${fee.year}\nAmount Paid: Rs. ${fee.paidAmount}\nRemaining Balance: Rs. ${fee.totalAmount - fee.paidAmount}\nThank you, ${schoolName}.`;
     
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Fee Receipt - Ali Public School',
+          title: `Fee Receipt - ${schoolName}`,
           text: shareText,
         });
       } catch (err) {
@@ -107,10 +112,10 @@ const Receipt: React.FC<ReceiptProps> = ({ fee, student, onClose }) => {
               <div className="flex justify-between items-start mb-10 border-b border-dashed border-slate-200 pb-8">
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 bg-green-600 rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-lg shadow-green-200">
-                    A
+                    {getInitials(schoolName)}
                   </div>
                   <div>
-                    <h1 className="text-xl font-black text-slate-900 tracking-tighter uppercase">Ali Public School</h1>
+                    <h1 className="text-xl font-black text-slate-900 tracking-tighter uppercase">{schoolName}</h1>
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Official Fee Receipt</p>
                   </div>
                 </div>
@@ -152,7 +157,7 @@ const Receipt: React.FC<ReceiptProps> = ({ fee, student, onClose }) => {
               </div>
 
               <div className="text-center">
-                <p className="text-[10px] text-slate-400 font-bold italic">Thank you for choosing Ali Public School for your child's education.</p>
+                <p className="text-[10px] text-slate-400 font-bold italic">Thank you for choosing {schoolName} for your child's education.</p>
               </div>
             </div>
           </div>
@@ -165,10 +170,10 @@ const Receipt: React.FC<ReceiptProps> = ({ fee, student, onClose }) => {
           <div className="flex justify-between items-start mb-10 border-b-2 border-slate-100 pb-8">
             <div className="flex items-center gap-6">
               <div className="w-20 h-20 bg-black flex items-center justify-center text-white text-4xl font-black">
-                A
+                {getInitials(schoolName)}
               </div>
               <div>
-                <h1 className="text-3xl font-black tracking-tighter uppercase">Ali Public School</h1>
+                <h1 className="text-3xl font-black tracking-tighter uppercase">{schoolName}</h1>
                 <p className="text-sm font-bold text-slate-600">Yazman Road, Bahawalpur, Pakistan</p>
                 <p className="text-xs text-slate-500">Contact: 0323-1756420 • Computer Generated</p>
               </div>

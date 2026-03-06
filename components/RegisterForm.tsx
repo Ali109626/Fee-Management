@@ -33,7 +33,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister, onSwitchToLogin
 
     // Simulate setup
     setTimeout(() => {
-      onRegister({ schoolName, email, password });
+      onRegister({ schoolName, email, password, name: schoolName });
       setIsLoading(false);
     }, 1200);
   };
@@ -45,7 +45,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister, onSwitchToLogin
           
           <div className="p-8 pt-10 text-center bg-gradient-to-b from-indigo-50/50 to-white">
             <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-black text-3xl shadow-xl shadow-indigo-200 mx-auto mb-6">
-              APS
+              SMS
             </div>
             <h1 className="text-2xl font-black text-slate-800 tracking-tight">Setup Admin Account</h1>
             <p className="text-slate-400 text-sm font-medium mt-1">Initialize your school management system</p>
@@ -70,7 +70,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister, onSwitchToLogin
                   value={schoolName}
                   onChange={(e) => setSchoolName(e.target.value)}
                   className="w-full pl-12 pr-4 py-4 rounded-2xl border-2 border-slate-50 bg-slate-50/30 text-slate-800 font-bold text-sm focus:border-indigo-500 focus:bg-white outline-none transition-all placeholder:text-slate-300"
-                  placeholder="Ali Public School"
+                  placeholder="Your School Name"
                 />
               </div>
             </div>
