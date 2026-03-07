@@ -15,7 +15,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister, onSwitchToLogin
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -31,11 +31,13 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister, onSwitchToLogin
 
     setIsLoading(true);
 
-    // Simulate setup
-    setTimeout(() => {
-      onRegister({ schoolName, email, password, name: schoolName });
+    try {
+      await onRegister({ schoolName, email, password, name: schoolName });
+    } catch (err) {
+      // Error is handled in App.tsx via alert
+    } finally {
       setIsLoading(false);
-    }, 1200);
+    }
   };
 
   return (
@@ -154,8 +156,8 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister, onSwitchToLogin
 
           <div className="px-8 pb-10 text-center">
             <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
-              Data is stored locally on this device.<br />
-              Secure and private initialization.
+              Secure Cloud Infrastructure<br />
+              Access your data from any device.
             </p>
           </div>
         </div>

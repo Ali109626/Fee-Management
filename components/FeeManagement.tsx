@@ -69,7 +69,7 @@ const FeeManagement: React.FC<FeeManagementProps> = ({
     setShowPayModal(true);
   };
 
-  const handleProcessPayment = (e: React.FormEvent) => {
+  const handleProcessPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedStudent) return;
 
@@ -91,7 +91,7 @@ const FeeManagement: React.FC<FeeManagementProps> = ({
       const newPaidAmount = existingFee.paidAmount + payAmount;
       const newStatus = newPaidAmount >= existingFee.totalAmount ? PaymentStatus.PAID : PaymentStatus.PARTIAL;
       
-      onUpdateFee(existingFee.id, {
+      await onUpdateFee(existingFee.id, {
         paidAmount: newPaidAmount,
         status: newStatus,
         remarks: payRemarks || existingFee.remarks,
@@ -105,7 +105,7 @@ const FeeManagement: React.FC<FeeManagementProps> = ({
 
       const status = payAmount >= standardFee ? PaymentStatus.PAID : payAmount > 0 ? PaymentStatus.PARTIAL : PaymentStatus.UNPAID;
       
-      onAddFee({
+      await onAddFee({
         studentId: selectedStudent.id,
         month: payTargetMonth,
         year: new Date().getFullYear(),
