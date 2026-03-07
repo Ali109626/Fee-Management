@@ -7,6 +7,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
+import fs from "fs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -57,6 +58,11 @@ db.exec(`
     FOREIGN KEY(adminId) REFERENCES admins(id),
     FOREIGN KEY(studentId) REFERENCES students(id)
   );
+
+  CREATE INDEX IF NOT EXISTS idx_students_adminId ON students(adminId);
+  CREATE INDEX IF NOT EXISTS idx_students_portalId ON students(portalId);
+  CREATE INDEX IF NOT EXISTS idx_fees_adminId ON fee_records(adminId);
+  CREATE INDEX IF NOT EXISTS idx_fees_studentId ON fee_records(studentId);
 `);
 
 async function startServer() {
@@ -69,6 +75,21 @@ async function startServer() {
     origin: true,
     credentials: true
   }));
+
+  // Request logging
+  app.use((req, res, next) => {
+    console.log(`${req.method} ${req.url}`);
+    next();
+  });
+
+  // Health check
+  app.get("/api/health", (req, res) => {
+    res.json({ 
+      status: "ok", 
+      env: process.env.NODE_ENV || "development",
+      time: new Date().toISOString()
+    });
+  });
 
   // Auth Middleware
   const authenticate = (req: any, res: any, next: any) => {
@@ -88,7 +109,7 @@ async function startServer() {
   // Admin Registration
   app.post("/api/auth/register", async (req, res) => {
     const { name, email, schoolName, password } = req.body;
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 4);
     const id = `ADM-${Date.now()}`;
 
     try {
@@ -213,17 +234,23 @@ async function startServer() {
     res.json({ success: true });
   });
 
-  // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
+  // API 404 handler
+  app.all("/api/*", (req, res) => {
+    res.status(404).json({ error: `API route not found: ${req.method} ${req.url}` });
+  });
+
+  // Vite middleware for development or if dist is missing
+  const distPath = path.join(__dirname, "dist");
+  if (process.env.NODE_ENV !== "production" || !fs.existsSync(distPath)) {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
   } else {
-    app.use(express.static(path.join(__dirname, "dist")));
+    app.use(express.static(distPath));
     app.get("*", (req, res) => {
-      res.sendFile(path.join(__dirname, "dist", "index.html"));
+      res.sendFile(path.join(distPath, "index.html"));
     });
   }
 
