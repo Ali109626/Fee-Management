@@ -12,7 +12,7 @@ import fs from "fs";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const db = new Database("school.db");
+const db = new Database("school_v2.db");
 const JWT_SECRET = process.env.JWT_SECRET || "super-secret-key";
 
 // Initialize Database
@@ -64,6 +64,13 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_fees_adminId ON fee_records(adminId);
   CREATE INDEX IF NOT EXISTS idx_fees_studentId ON fee_records(studentId);
 `);
+
+try {
+  const row = db.prepare("SELECT 1 as ok").get();
+  console.log("Database connection successful:", row);
+} catch (err) {
+  console.error("Database connection failed:", err);
+}
 
 async function startServer() {
   const app = express();
@@ -120,10 +127,11 @@ async function startServer() {
       res.cookie("token", token, { httpOnly: true, secure: true, sameSite: 'none' });
       res.json({ user: { id, name, email, schoolName }, role: 'Admin' });
     } catch (err: any) {
+      console.error("Registration error:", err);
       if (err.message.includes("UNIQUE constraint failed")) {
         return res.status(400).json({ error: "Email already registered" });
       }
-      res.status(500).json({ error: "Server error" });
+      res.status(500).json({ error: `Server error: ${err.message}` });
     }
   });
 
@@ -131,23 +139,28 @@ async function startServer() {
   app.post("/api/auth/login", async (req, res) => {
     const { email, password, portalId, loginType } = req.body;
 
-    if (loginType === 'Admin') {
-      const admin: any = db.prepare("SELECT * FROM admins WHERE email = ?").get(email);
-      if (admin && await bcrypt.compare(password, admin.password)) {
-        const token = jwt.sign({ id: admin.id, role: 'Admin' }, JWT_SECRET);
-        res.cookie("token", token, { httpOnly: true, secure: true, sameSite: 'none' });
-        const { password: _, ...adminData } = admin;
-        return res.json({ user: adminData, role: 'Admin' });
+    try {
+      if (loginType === 'Admin') {
+        const admin: any = db.prepare("SELECT * FROM admins WHERE email = ?").get(email);
+        if (admin && await bcrypt.compare(password, admin.password)) {
+          const token = jwt.sign({ id: admin.id, role: 'Admin' }, JWT_SECRET);
+          res.cookie("token", token, { httpOnly: true, secure: true, sameSite: 'none' });
+          const { password: _, ...adminData } = admin;
+          return res.json({ user: adminData, role: 'Admin' });
+        }
+      } else {
+        const student: any = db.prepare("SELECT * FROM students WHERE portalId = ?").get(portalId);
+        if (student) {
+          const token = jwt.sign({ id: student.id, role: 'Student' }, JWT_SECRET);
+          res.cookie("token", token, { httpOnly: true, secure: true, sameSite: 'none' });
+          return res.json({ user: student, role: 'Student' });
+        }
       }
-    } else {
-      const student: any = db.prepare("SELECT * FROM students WHERE portalId = ?").get(portalId);
-      if (student) {
-        const token = jwt.sign({ id: student.id, role: 'Student' }, JWT_SECRET);
-        res.cookie("token", token, { httpOnly: true, secure: true, sameSite: 'none' });
-        return res.json({ user: student, role: 'Student' });
-      }
+      res.status(401).json({ error: "Invalid credentials" });
+    } catch (err: any) {
+      console.error("Login error:", err);
+      res.status(500).json({ error: `Server error: ${err.message}` });
     }
-    res.status(401).json({ error: "Invalid credentials" });
   });
 
   // Logout
@@ -169,7 +182,8 @@ async function startServer() {
         const student: any = db.prepare("SELECT * FROM students WHERE id = ?").get(decoded.id);
         res.json({ user: student, role: 'Student' });
       }
-    } catch (err) {
+    } catch (err: any) {
+      console.error("Auth check error:", err);
       res.status(401).json({ error: "Invalid session" });
     }
   });

@@ -10,7 +10,10 @@ export const api = {
       body: JSON.stringify(adminData),
       credentials: "include"
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ error: "Registration failed" }));
+      throw new Error(errorData.error || "Registration failed");
+    }
     return res.json();
   },
 
@@ -21,7 +24,10 @@ export const api = {
       body: JSON.stringify(credentials),
       credentials: "include"
     });
-    if (!res.ok) throw new Error(await res.text());
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({ error: "Login failed" }));
+      throw new Error(errorData.error || "Login failed");
+    }
     return res.json();
   },
 
