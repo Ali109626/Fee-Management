@@ -2,15 +2,16 @@
 import React, { useState } from 'react';
 import { Lock, Mail, AlertCircle, Eye, EyeOff, ShieldCheck, GraduationCap, UserCircle } from 'lucide-react';
 import { Student, UserRole, Admin } from '../types';
+import { auth, db } from '../services/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 
 interface LoginFormProps {
   onLogin: (success: boolean, role?: UserRole, student?: Student | null, admin?: Admin | null) => void;
   onSwitchToRegister: () => void;
-  students: Student[];
-  admins: Admin[];
 }
 
-const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onSwitchToRegister, students, admins }) => {
+const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onSwitchToRegister }) => {
   const [loginType, setLoginType] = useState<'Admin' | 'Student'>('Admin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -19,32 +20,42 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onSwitchToRegister, stud
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
 
-    setTimeout(() => {
+    try {
       if (loginType === 'Admin') {
-        const admin = admins.find(a => a.email === email && a.password === password);
-
-        if (admin) {
-          onLogin(true, 'Admin', null, admin);
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        
+        // Fetch admin details
+        const adminDoc = await getDoc(doc(db, 'admins', user.uid));
+        if (adminDoc.exists()) {
+          onLogin(true, 'Admin', null, { id: user.uid, ...adminDoc.data() } as Admin);
         } else {
-          setError('Invalid admin email or password. Please try again.');
+          setError('Admin record not found in database.');
           setIsLoading(false);
         }
       } else {
-        // Student Login
-        const student = students.find(s => (s.portalId || '').trim().toLowerCase() === portalId.trim().toLowerCase());
-        if (student) {
-          onLogin(true, 'Student', student);
+        // Student Login via Portal ID
+        const q = query(collection(db, 'students'), where('portalId', '==', portalId.trim()));
+        const querySnapshot = await getDocs(q);
+        
+        if (!querySnapshot.empty) {
+          const studentDoc = querySnapshot.docs[0];
+          onLogin(true, 'Student', { id: studentDoc.id, ...studentDoc.data() } as Student);
         } else {
           setError('Invalid Student Portal ID. Please check and try again.');
           setIsLoading(false);
         }
       }
-    }, 800);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Authentication failed. Please check your credentials.');
+      setIsLoading(false);
+    }
   };
 
   return (

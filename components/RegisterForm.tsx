@@ -1,6 +1,9 @@
 
 import React, { useState } from 'react';
 import { ShieldPlus, Mail, Lock, School, ArrowRight, UserCheck } from 'lucide-react';
+import { auth, db } from '../services/firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 
 interface RegisterFormProps {
   onRegister: (data: any) => void;
@@ -15,7 +18,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister, onSwitchToLogin
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -31,11 +34,25 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister, onSwitchToLogin
 
     setIsLoading(true);
 
-    // Simulate setup
-    setTimeout(() => {
-      onRegister({ schoolName, email, password, name: schoolName });
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      
+      const adminData = {
+        schoolName,
+        email,
+        name: schoolName,
+      };
+
+      // Save admin details to Firestore
+      await setDoc(doc(db, 'admins', user.uid), adminData);
+      
+      onRegister({ ...adminData, id: user.uid });
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Registration failed. Please try again.');
       setIsLoading(false);
-    }, 1200);
+    }
   };
 
   return (
