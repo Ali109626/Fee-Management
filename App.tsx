@@ -10,60 +10,59 @@ import LoginForm from './components/LoginForm';
 import RegisterForm from './components/RegisterForm';
 import StudentPortal from './components/StudentPortal';
 import { Student, FeeRecord, UserRole, Admin } from './types';
-import { api } from './services/api';
+import { INITIAL_STUDENTS, INITIAL_FEES } from './constants';
 
 const App: React.FC = () => {
-  const [currentAdmin, setCurrentAdmin] = useState<Admin | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const STORAGE_KEY_ADMINS = 'aps_v1_admins';
+  const STORAGE_KEY_STUDENTS = 'aps_v1_students_stable';
+  const STORAGE_KEY_FEES = 'aps_v1_fees_stable';
+
+  const [admins, setAdmins] = useState<Admin[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY_ADMINS);
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [currentAdmin, setCurrentAdmin] = useState<Admin | null>(() => {
+    const saved = localStorage.getItem('aps_current_admin');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return localStorage.getItem('aps_auth_status') === 'true';
+  });
+
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [role, setRole] = useState<UserRole>('Admin');
-  const [currentStudent, setCurrentStudent] = useState<Student | null>(null);
+  const [role, setRole] = useState<UserRole>(() => {
+    return (localStorage.getItem('aps_user_role') as UserRole) || 'Admin';
+  });
+  const [currentStudent, setCurrentStudent] = useState<Student | null>(() => {
+    const saved = localStorage.getItem('aps_current_student');
+    return saved ? JSON.parse(saved) : null;
+  });
   const [searchTerm, setSearchTerm] = useState('');
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
-  const [allStudents, setAllStudents] = useState<Student[]>([]);
-  const [allFees, setAllFees] = useState<FeeRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  // Initial Auth Check
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const data = await api.me();
-        if (data) {
-          setIsAuthenticated(true);
-          setRole(data.role);
-          if (data.role === 'Admin') {
-            setCurrentAdmin(data.user);
-          } else {
-            setCurrentStudent(data.user);
-            setActiveTab('portal');
-          }
-        }
-      } catch (err) {
-        console.error("Auth check failed", err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    checkAuth();
-  }, []);
-
-  // Fetch data when authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      const fetchData = async () => {
-        const adminId = role === 'Student' && currentStudent ? currentStudent.adminId : undefined;
-        const [studentsData, feesData] = await Promise.all([
-          api.getStudents(adminId),
-          api.getFees(adminId)
-        ]);
-        setAllStudents(studentsData);
-        setAllFees(feesData);
-      };
-      fetchData();
+  
+  const [allStudents, setAllStudents] = useState<Student[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY_STUDENTS);
+    if (saved === null) return INITIAL_STUDENTS.map(s => ({ ...s, adminId: 'default-admin' }));
+    try {
+      return JSON.parse(saved);
+    } catch {
+      return INITIAL_STUDENTS.map(s => ({ ...s, adminId: 'default-admin' }));
     }
-  }, [isAuthenticated, role, currentStudent]);
+  });
+  
+  const [allFees, setAllFees] = useState<FeeRecord[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY_FEES);
+    if (saved === null) return INITIAL_FEES.map(f => ({ ...f, adminId: 'default-admin' }));
+    try {
+      return JSON.parse(saved);
+    } catch {
+      return INITIAL_FEES.map(f => ({ ...f, adminId: 'default-admin' }));
+    }
+  });
 
+  // Filtered data for the current admin
   const students = useMemo(() => {
     if (role === 'Student' && currentStudent) {
       return allStudents.filter(s => s.adminId === currentStudent.adminId);
@@ -82,15 +81,51 @@ const App: React.FC = () => {
 
   const [activeReceiptFeeId, setActiveReceiptFeeId] = useState<string | null>(null);
 
-  const handleRegister = async (adminData: Omit<Admin, 'id'>) => {
-    try {
-      const data = await api.register(adminData);
-      setCurrentAdmin(data.user);
-      setRole('Admin');
-      setIsAuthenticated(true);
-    } catch (err: any) {
-      alert(err.message || "Registration failed");
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_ADMINS, JSON.stringify(admins));
+  }, [admins]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_STUDENTS, JSON.stringify(allStudents));
+  }, [allStudents]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_FEES, JSON.stringify(allFees));
+  }, [allFees]);
+
+  useEffect(() => {
+    localStorage.setItem('aps_auth_status', isAuthenticated.toString());
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    localStorage.setItem('aps_user_role', role);
+  }, [role]);
+
+  useEffect(() => {
+    if (currentAdmin) {
+      localStorage.setItem('aps_current_admin', JSON.stringify(currentAdmin));
+    } else {
+      localStorage.removeItem('aps_current_admin');
     }
+  }, [currentAdmin]);
+
+  useEffect(() => {
+    if (currentStudent) {
+      localStorage.setItem('aps_current_student', JSON.stringify(currentStudent));
+    } else {
+      localStorage.removeItem('aps_current_student');
+    }
+  }, [currentStudent]);
+
+  const handleRegister = (adminData: Omit<Admin, 'id'>) => {
+    const newAdmin: Admin = {
+      ...adminData,
+      id: `ADM-${Date.now()}`
+    };
+    setAdmins(prev => [...prev, newAdmin]);
+    setCurrentAdmin(newAdmin);
+    setRole('Admin');
+    setIsAuthenticated(true);
   };
 
   const handleLogin = (success: boolean, userRole: UserRole = 'Admin', studentData: Student | null = null, adminData: Admin | null = null) => {
@@ -105,12 +140,15 @@ const App: React.FC = () => {
     setIsAuthenticated(success);
   };
 
-  const handleLogout = async () => {
-    await api.logout();
+  const handleLogout = () => {
     setIsAuthenticated(false);
     setRole('Admin');
     setCurrentAdmin(null);
     setCurrentStudent(null);
+    localStorage.setItem('aps_auth_status', 'false');
+    localStorage.removeItem('aps_user_role');
+    localStorage.removeItem('aps_current_admin');
+    localStorage.removeItem('aps_current_student');
     setActiveTab('dashboard');
   };
 
@@ -118,7 +156,7 @@ const App: React.FC = () => {
     return name.split(' ').map(word => word[0]).join('').substring(0, 3).toUpperCase();
   };
 
-  const handleAddStudent = async (studentData: Omit<Student, 'id' | 'portalId' | 'adminId'>) => {
+  const handleAddStudent = (studentData: Omit<Student, 'id' | 'portalId' | 'adminId'>) => {
     if (!currentAdmin) return;
     const rollNum = studentData.rollNumber || `R-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
     const prefix = getInitials(currentAdmin.schoolName);
@@ -129,52 +167,51 @@ const App: React.FC = () => {
       rollNumber: rollNum,
       portalId: `${prefix}-${rollNum}`
     };
-    
-    const savedStudent = await api.addStudent(newStudent);
-    setAllStudents(prev => [...prev, savedStudent]);
+    setAllStudents(prev => [...prev, newStudent]);
     
     alert(`Student Added Successfully!\n\nStudent Portal ID: ${newStudent.portalId}\n\nPlease share this ID with the student for portal access.`);
   };
 
-  const handleUpdateStudent = async (id: string, studentData: Omit<Student, 'id' | 'portalId' | 'adminId'>) => {
+  const handleUpdateStudent = (id: string, studentData: Omit<Student, 'id' | 'portalId' | 'adminId'>) => {
     if (!currentAdmin) return;
     const prefix = getInitials(currentAdmin.schoolName);
-    const rollNum = studentData.rollNumber;
-    const updatedData = {
-      ...studentData,
-      portalId: `${prefix}-${rollNum}`
-    };
-
-    const savedStudent = await api.updateStudent(id, updatedData);
-    setAllStudents(prev => prev.map(s => s.id === id ? { ...s, ...savedStudent } : s));
+    setAllStudents(prev => prev.map(s => {
+      if (s.id === id) {
+        const rollNum = studentData.rollNumber || s.rollNumber;
+        return { 
+          ...s,
+          ...studentData, 
+          id, 
+          rollNumber: rollNum,
+          portalId: `${prefix}-${rollNum}` 
+        };
+      }
+      return s;
+    }));
   };
 
-  const handleDeleteStudent = async (id: string) => {
+  const handleDeleteStudent = (id: string) => {
     const isConfirmed = confirm('Are you sure you want to delete this student and all their fee records?');
     if (isConfirmed) {
-      await api.deleteStudent(id);
       setAllStudents(prev => prev.filter(s => s.id !== id));
       setAllFees(prev => prev.filter(f => f.studentId !== id));
     }
   };
 
-  const handleAddFee = async (feeData: Omit<FeeRecord, 'id' | 'adminId'>) => {
+  const handleAddFee = (feeData: Omit<FeeRecord, 'id' | 'adminId'>) => {
     if (!currentAdmin) return;
     const newFee: FeeRecord = {
       ...feeData,
       adminId: currentAdmin.id,
       id: `F-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`
     };
-    
-    const savedFee = await api.addFee(newFee);
-    setAllFees(prev => [...prev, savedFee]);
-    if (savedFee.paidAmount > 0) {
-      setActiveReceiptFeeId(savedFee.id);
+    setAllFees(prev => [...prev, newFee]);
+    if (newFee.paidAmount > 0) {
+      setActiveReceiptFeeId(newFee.id);
     }
   };
 
-  const handleUpdateFee = async (id: string, updates: Partial<FeeRecord>) => {
-    await api.updateFee(id, updates);
+  const handleUpdateFee = (id: string, updates: Partial<FeeRecord>) => {
     setAllFees(prev => prev.map(f => f.id === id ? { ...f, ...updates } : f));
   };
 
@@ -187,20 +224,12 @@ const App: React.FC = () => {
     return { fee, student };
   }, [activeReceiptFeeId, allFees, allStudents]);
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
-
   // Flow control
   if (!isAuthenticated) {
     if (authMode === 'register') {
       return <RegisterForm onRegister={handleRegister} onSwitchToLogin={() => setAuthMode('login')} />;
     }
-    return <LoginForm onLogin={handleLogin} onSwitchToRegister={() => setAuthMode('register')} />;
+    return <LoginForm onLogin={handleLogin} onSwitchToRegister={() => setAuthMode('register')} students={allStudents} admins={admins} />;
   }
 
   const renderContent = () => {

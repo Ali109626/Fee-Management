@@ -2,14 +2,15 @@
 import React, { useState } from 'react';
 import { Lock, Mail, AlertCircle, Eye, EyeOff, ShieldCheck, GraduationCap, UserCircle } from 'lucide-react';
 import { Student, UserRole, Admin } from '../types';
-import { api } from '../services/api';
 
 interface LoginFormProps {
   onLogin: (success: boolean, role?: UserRole, student?: Student | null, admin?: Admin | null) => void;
   onSwitchToRegister: () => void;
+  students: Student[];
+  admins: Admin[];
 }
 
-const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onSwitchToRegister }) => {
+const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onSwitchToRegister, students, admins }) => {
   const [loginType, setLoginType] = useState<'Admin' | 'Student'>('Admin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,26 +18,33 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onSwitchToRegister }) =>
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'offline'>('checking');
 
-  React.useEffect(() => {
-    fetch('/api/health')
-      .then(res => res.ok ? setServerStatus('online') : setServerStatus('offline'))
-      .catch(() => setServerStatus('offline'));
-  }, []);
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
 
-    try {
-      const data = await api.login({ email, password, portalId, loginType });
-      onLogin(true, data.role, data.role === 'Student' ? data.user : null, data.role === 'Admin' ? data.user : null);
-    } catch (err: any) {
-      setError(err.message || 'Login failed. Please check your credentials.');
-      setIsLoading(false);
-    }
+    setTimeout(() => {
+      if (loginType === 'Admin') {
+        const admin = admins.find(a => a.email === email && a.password === password);
+
+        if (admin) {
+          onLogin(true, 'Admin', null, admin);
+        } else {
+          setError('Invalid admin email or password. Please try again.');
+          setIsLoading(false);
+        }
+      } else {
+        // Student Login
+        const student = students.find(s => (s.portalId || '').trim().toLowerCase() === portalId.trim().toLowerCase());
+        if (student) {
+          onLogin(true, 'Student', student);
+        } else {
+          setError('Invalid Student Portal ID. Please check and try again.');
+          setIsLoading(false);
+        }
+      }
+    }, 800);
   };
 
   return (
@@ -56,15 +64,6 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onSwitchToRegister }) =>
             <p className="text-slate-400 text-sm font-medium mt-1">
               {loginType === 'Admin' ? 'Sign in to manage your school' : 'Enter your ID to access your records'}
             </p>
-            <div className="mt-2 flex items-center justify-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${
-                serverStatus === 'online' ? 'bg-green-500' : 
-                serverStatus === 'offline' ? 'bg-red-500' : 'bg-slate-300 animate-pulse'
-              }`} />
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                Server: {serverStatus}
-              </span>
-            </div>
           </div>
 
           {/* Login Type Toggle */}

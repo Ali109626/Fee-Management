@@ -78,7 +78,7 @@ const StudentList: React.FC<StudentListProps> = ({
     setShowViewModal(true);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const prefix = getGradePrefix(formData.grade);
     const finalData = {
@@ -87,9 +87,9 @@ const StudentList: React.FC<StudentListProps> = ({
     };
 
     if (editingId) {
-      await onUpdateStudent(editingId, finalData);
+      onUpdateStudent(editingId, finalData);
     } else {
-      await onAddStudent(finalData);
+      onAddStudent(finalData);
     }
     closeModal();
   };

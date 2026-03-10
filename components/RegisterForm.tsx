@@ -14,15 +14,8 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister, onSwitchToLogin
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [serverStatus, setServerStatus] = useState<'checking' | 'online' | 'offline'>('checking');
 
-  React.useEffect(() => {
-    fetch('/api/health')
-      .then(res => res.ok ? setServerStatus('online') : setServerStatus('offline'))
-      .catch(() => setServerStatus('offline'));
-  }, []);
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -38,13 +31,11 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister, onSwitchToLogin
 
     setIsLoading(true);
 
-    try {
-      await onRegister({ schoolName, email, password, name: schoolName });
-    } catch (err) {
-      // Error is handled in App.tsx via alert
-    } finally {
+    // Simulate setup
+    setTimeout(() => {
+      onRegister({ schoolName, email, password, name: schoolName });
       setIsLoading(false);
-    }
+    }, 1200);
   };
 
   return (
@@ -58,15 +49,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister, onSwitchToLogin
             </div>
             <h1 className="text-2xl font-black text-slate-800 tracking-tight">Setup Admin Account</h1>
             <p className="text-slate-400 text-sm font-medium mt-1">Initialize your school management system</p>
-            <div className="mt-2 flex items-center justify-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${
-                serverStatus === 'online' ? 'bg-green-500' : 
-                serverStatus === 'offline' ? 'bg-red-500' : 'bg-slate-300 animate-pulse'
-              }`} />
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                Server: {serverStatus}
-              </span>
-            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="p-8 space-y-5">
@@ -172,8 +154,8 @@ const RegisterForm: React.FC<RegisterFormProps> = ({ onRegister, onSwitchToLogin
 
           <div className="px-8 pb-10 text-center">
             <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
-              Secure Cloud Infrastructure<br />
-              Access your data from any device.
+              Data is stored locally on this device.<br />
+              Secure and private initialization.
             </p>
           </div>
         </div>
