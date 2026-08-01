@@ -184,6 +184,15 @@ const StudentPortal: React.FC<StudentPortalProps> = ({ student, fees }) => {
                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
                             {fee.paymentDate ? `Paid on ${fee.paymentDate}` : 'Payment Pending'}
                           </p>
+                          {fee.charges && fee.charges.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {fee.charges.map(c => (
+                                <span key={c.id} className="px-2 py-0.5 bg-slate-200 text-slate-600 rounded text-[8px] font-black uppercase">
+                                  {c.name}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                       

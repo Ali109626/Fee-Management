@@ -6,8 +6,8 @@ import { GRADES, GRADE_FEES } from '../constants';
 
 interface StudentListProps {
   students: Student[];
-  onAddStudent: (student: Omit<Student, 'id'>) => void;
-  onUpdateStudent: (id: string, student: Omit<Student, 'id' | 'portalId'>) => void;
+  onAddStudent: (student: Omit<Student, 'id' | 'portalId' | 'adminId'>) => Promise<boolean>;
+  onUpdateStudent: (id: string, student: Omit<Student, 'id' | 'portalId' | 'adminId'>) => Promise<boolean>;
   onDeleteStudent: (id: string) => void;
   searchTerm: string;
 }
@@ -30,6 +30,10 @@ const StudentList: React.FC<StudentListProps> = ({
   };
 
   const getGradePrefix = (grade: string) => {
+    if (grade.toLowerCase().includes('year')) {
+      const match = grade.match(/\d+/);
+      return match ? `Y${match[0]}` : grade.substring(0, 2).toUpperCase();
+    }
     const match = grade.match(/\d+/);
     return match ? `G${match[0]}` : grade.substring(0, 2).toUpperCase();
   };
@@ -86,12 +90,16 @@ const StudentList: React.FC<StudentListProps> = ({
       rollNumber: `${prefix}-${formData.rollNumber}`
     };
 
+    let success = false;
     if (editingId) {
-      await onUpdateStudent(editingId, finalData);
+      success = await onUpdateStudent(editingId, finalData);
     } else {
-      await onAddStudent(finalData);
+      success = await onAddStudent(finalData);
     }
-    closeModal();
+    
+    if (success) {
+      closeModal();
+    }
   };
 
   const closeModal = () => {
@@ -280,12 +288,22 @@ const StudentList: React.FC<StudentListProps> = ({
                   </div>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Monthly Fee (Rs)</label>
-                  <input required type="number" value={formData.monthlyFee} onChange={e => setFormData({...formData, monthlyFee: Number(e.target.value)})} className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none transition-all font-black text-slate-800 text-sm" />
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Monthly Fee (PKR)</label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">Rs.</span>
+                    <input 
+                      required 
+                      type="number" 
+                      value={formData.monthlyFee || ''} 
+                      onChange={e => setFormData({...formData, monthlyFee: Number(e.target.value)})} 
+                      className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 outline-none transition-all font-black text-slate-800 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" 
+                      placeholder="0"
+                    />
+                  </div>
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Phone</label>
-                  <input required type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none transition-all text-sm" />
+                  <input required type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value.replace(/\D/g, '')})} className="w-full px-4 py-3 rounded-xl border border-slate-200 outline-none transition-all text-sm" placeholder="e.g. 03001234567" />
                 </div>
                 <div className="space-y-1.5 md:col-span-2">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Home Address</label>

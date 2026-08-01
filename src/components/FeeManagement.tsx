@@ -12,12 +12,13 @@ import {
   CreditCard,
   Info
 } from 'lucide-react';
-import { Student, FeeRecord, PaymentStatus, PaymentMethod } from '../types';
+import { Student, FeeRecord, PaymentStatus, PaymentMethod, FeeType, Charge } from '../types';
 import { MONTHS, GRADE_FEES } from '../constants';
 
 interface FeeManagementProps {
   students: Student[];
   fees: FeeRecord[];
+  feeTypes: FeeType[];
   onAddFee: (fee: Omit<FeeRecord, 'id'>) => void;
   onUpdateFee: (id: string, updates: Partial<FeeRecord>) => void;
   onShowReceipt: (feeId: string) => void;
@@ -25,7 +26,7 @@ interface FeeManagementProps {
 }
 
 const FeeManagement: React.FC<FeeManagementProps> = ({ 
-  students, fees, onAddFee, onUpdateFee, onShowReceipt, searchTerm 
+  students, fees, feeTypes, onAddFee, onUpdateFee, onShowReceipt, searchTerm 
 }) => {
   const [selectedStudent, setSelectedStudent] = React.useState<Student | null>(null);
   const [showPayModal, setShowPayModal] = React.useState(false);
@@ -33,6 +34,7 @@ const FeeManagement: React.FC<FeeManagementProps> = ({
   const [payAmount, setPayAmount] = React.useState<number>(0);
   const [payMethod, setPayMethod] = React.useState<PaymentMethod>(PaymentMethod.CASH);
   const [payRemarks, setPayRemarks] = React.useState('');
+  const [selectedChargeIds, setSelectedChargeIds] = React.useState<string[]>([]);
   const [error, setError] = React.useState<string | null>(null);
 
   const filteredStudents = students.filter(s => 
@@ -50,6 +52,26 @@ const FeeManagement: React.FC<FeeManagementProps> = ({
     return { totalDue, totalPaid, balance, count: studentFees.length };
   };
 
+  const toggleCharge = (id: string) => {
+    setSelectedChargeIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const calculateTotalForModal = () => {
+    if (!selectedStudent) return 0;
+    const existingFee = fees.find(f => f.studentId === selectedStudent.id && f.month === payTargetMonth);
+    
+    if (existingFee) return existingFee.totalAmount;
+
+    const baseFee = selectedStudent.monthlyFee || GRADE_FEES[selectedStudent.grade] || 2500;
+    const additionalCharges = feeTypes
+      .filter(ft => selectedChargeIds.includes(ft.id))
+      .reduce((sum, ft) => sum + ft.amount, 0);
+    
+    return baseFee + additionalCharges;
+  };
+
   // Logic to handle opening modal with context
   const handleOpenPayModal = (student: Student, month?: string) => {
     const targetMonth = month || MONTHS[new Date().getMonth()];
@@ -59,6 +81,9 @@ const FeeManagement: React.FC<FeeManagementProps> = ({
     
     if (existingFee) {
       remaining = existingFee.totalAmount - existingFee.paidAmount;
+      setSelectedChargeIds(existingFee.charges?.map(c => c.id) || []);
+    } else {
+      setSelectedChargeIds([]);
     }
 
     setSelectedStudent(student);
@@ -74,7 +99,7 @@ const FeeManagement: React.FC<FeeManagementProps> = ({
     if (!selectedStudent) return;
 
     const existingFee = fees.find(f => f.studentId === selectedStudent.id && f.month === payTargetMonth);
-    const standardFee = selectedStudent.monthlyFee || GRADE_FEES[selectedStudent.grade] || 2500;
+    const totalAmount = calculateTotalForModal();
 
     if (existingFee) {
       const remainingForMonth = existingFee.totalAmount - existingFee.paidAmount;
@@ -98,24 +123,24 @@ const FeeManagement: React.FC<FeeManagementProps> = ({
         paymentDate: new Date().toISOString().split('T')[0]
       });
     } else {
-      if (payAmount > standardFee) {
-        setError(`Payment exceeds standard monthly fee (Rs. ${standardFee})`);
-        return;
-      }
+      const charges: Charge[] = feeTypes
+        .filter(ft => selectedChargeIds.includes(ft.id))
+        .map(ft => ({ id: ft.id, name: ft.name, amount: ft.amount }));
 
-      const status = payAmount >= standardFee ? PaymentStatus.PAID : payAmount > 0 ? PaymentStatus.PARTIAL : PaymentStatus.UNPAID;
+      const status = payAmount >= totalAmount ? PaymentStatus.PAID : payAmount > 0 ? PaymentStatus.PARTIAL : PaymentStatus.UNPAID;
       
       await onAddFee({
         studentId: selectedStudent.id,
         month: payTargetMonth,
         year: new Date().getFullYear(),
-        totalAmount: standardFee,
+        totalAmount: totalAmount,
         paidAmount: payAmount,
         status,
         paymentDate: new Date().toISOString().split('T')[0],
         method: payMethod,
         remarks: payRemarks,
-        receiptNumber: `RCP-${Math.floor(1000 + Math.random() * 9000)}`
+        receiptNumber: `RCP-${Math.floor(1000 + Math.random() * 9000)}`,
+        charges
       });
     }
 
@@ -339,40 +364,83 @@ const FeeManagement: React.FC<FeeManagementProps> = ({
               {/* Month Context Summary */}
               {(() => {
                 const existing = fees.find(f => f.studentId === selectedStudent.id && f.month === payTargetMonth);
-                const total = existing ? existing.totalAmount : (selectedStudent.monthlyFee || 0);
+                const baseFee = selectedStudent.monthlyFee || GRADE_FEES[selectedStudent.grade] || 2500;
+                const total = calculateTotalForModal();
                 const paid = existing ? existing.paidAmount : 0;
                 const balance = total - paid;
                 
                 return (
-                  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-col gap-2">
-                    <div className="flex justify-between items-center text-[10px] font-black text-slate-400 uppercase">
-                      <span>Month Total</span>
-                      <span className="text-slate-800">Rs. {total.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-[10px] font-black text-emerald-500 uppercase">
-                      <span>Already Paid</span>
-                      <span>Rs. {paid.toLocaleString()}</span>
-                    </div>
-                    <div className="h-[1px] bg-slate-200 my-1" />
-                    <div className="flex justify-between items-center text-xs font-black text-red-500 uppercase">
-                      <span>Remaining Balance</span>
-                      <span>Rs. {balance.toLocaleString()}</span>
+                  <div className="space-y-4">
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex flex-col gap-2">
+                      <div className="flex justify-between items-center text-[10px] font-black text-slate-400 uppercase">
+                        <span>Monthly Base Fee</span>
+                        <span className="text-slate-800">Rs. {baseFee.toLocaleString()}</span>
+                      </div>
+                      
+                      {!existing && feeTypes.length > 0 && (
+                        <div className="space-y-2 mt-2 pt-2 border-t border-slate-200">
+                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Additional Charges</p>
+                          <div className="flex flex-wrap gap-2">
+                            {feeTypes.map(ft => (
+                              <button
+                                key={ft.id}
+                                type="button"
+                                onClick={() => toggleCharge(ft.id)}
+                                className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
+                                  selectedChargeIds.includes(ft.id)
+                                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-md shadow-indigo-100'
+                                    : 'bg-white border-slate-200 text-slate-500 hover:border-indigo-300'
+                                }`}
+                              >
+                                {ft.name} (+{ft.amount})
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {existing && existing.charges && existing.charges.length > 0 && (
+                        <div className="space-y-1 mt-2 pt-2 border-t border-slate-200">
+                          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Included Charges</p>
+                          {existing.charges.map(c => (
+                            <div key={c.id} className="flex justify-between items-center text-[10px] font-bold text-slate-600">
+                              <span>{c.name}</span>
+                              <span>Rs. {c.amount.toLocaleString()}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="h-[1px] bg-slate-200 my-1" />
+                      <div className="flex justify-between items-center text-xs font-black text-slate-800 uppercase">
+                        <span>Total Payable</span>
+                        <span>Rs. {total.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-[10px] font-black text-emerald-500 uppercase">
+                        <span>Already Paid</span>
+                        <span>Rs. {paid.toLocaleString()}</span>
+                      </div>
+                      <div className="h-[1px] bg-slate-200 my-1" />
+                      <div className="flex justify-between items-center text-xs font-black text-red-500 uppercase">
+                        <span>Remaining Balance</span>
+                        <span>Rs. {balance.toLocaleString()}</span>
+                      </div>
                     </div>
                   </div>
                 );
               })()}
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Payment Amount (Rs.)</label>
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Payment Amount (PKR)</label>
                 <div className="relative">
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-black text-lg">Rs.</div>
                   <input 
                     required
                     type="number"
-                    value={payAmount}
+                    value={payAmount || ''}
                     onChange={e => setPayAmount(Number(e.target.value))}
-                    className="w-full pl-12 pr-4 py-5 rounded-2xl border-2 border-indigo-100 bg-indigo-50/10 text-indigo-700 font-black text-2xl focus:border-indigo-500 outline-none transition-all placeholder-indigo-200"
-                    placeholder="0.00"
+                    className="w-full pl-12 pr-4 py-5 rounded-2xl border-2 border-indigo-100 bg-indigo-50/10 text-indigo-700 font-black text-2xl focus:border-indigo-500 outline-none transition-all placeholder-indigo-200 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    placeholder="Enter amount"
                   />
                 </div>
               </div>

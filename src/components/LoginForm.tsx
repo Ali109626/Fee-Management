@@ -1,18 +1,18 @@
 
 import React, { useState } from 'react';
-import { Lock, Mail, AlertCircle, Eye, EyeOff, ShieldCheck, GraduationCap, UserCircle } from 'lucide-react';
-import { Student, UserRole, Admin } from '../types';
+import { Lock, Mail, AlertCircle, Eye, EyeOff, ShieldCheck, Users, GraduationCap } from 'lucide-react';
 import { auth, db } from '../services/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { UserRole, Student, Admin } from '../types';
 
 interface LoginFormProps {
-  onLogin: (success: boolean, role?: UserRole, student?: Student | null, admin?: Admin | null) => void;
+  onLogin: (success: boolean, role?: UserRole, studentData?: Student | null, adminData?: Admin | null) => void;
   onSwitchToRegister: () => void;
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onSwitchToRegister }) => {
-  const [loginType, setLoginType] = useState<'Admin' | 'Student'>('Admin');
+  const [loginType, setLoginType] = useState<UserRole>('Admin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [portalId, setPortalId] = useState('');
@@ -27,33 +27,58 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onSwitchToRegister }) =>
 
     try {
       if (loginType === 'Admin') {
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-        
-        // Fetch admin details
-        const adminDoc = await getDoc(doc(db, 'admins', user.uid));
-        if (adminDoc.exists()) {
-          onLogin(true, 'Admin', null, { id: user.uid, ...adminDoc.data() } as Admin);
+        let adminData: Admin | null = null;
+
+        try {
+          const userCredential = await signInWithEmailAndPassword(auth, email, password);
+          const adminDoc = await getDoc(doc(db, 'admins', userCredential.user.uid));
+          
+          if (adminDoc.exists()) {
+            adminData = { id: userCredential.user.uid, ...adminDoc.data() } as Admin;
+          }
+        } catch (authErr: any) {
+          console.warn('Firebase Auth sign-in unavailable or failed, checking Firestore:', authErr?.code || authErr);
+          
+          // Check Firestore admins collection for matching email
+          const adminsRef = collection(db, 'admins');
+          const q = query(adminsRef, where('email', '==', email.trim().toLowerCase()));
+          const querySnapshot = await getDocs(q);
+
+          if (!querySnapshot.empty) {
+            const matchedDoc = querySnapshot.docs[0];
+            const data = matchedDoc.data();
+            if (data.password && data.password !== password) {
+              setError('Invalid password. Please check your credentials.');
+              setIsLoading(false);
+              return;
+            }
+            adminData = { id: matchedDoc.id, ...data } as Admin;
+          }
+        }
+
+        if (adminData) {
+          onLogin(true, 'Admin', null, adminData);
         } else {
-          setError('Admin record not found in database.');
+          setError('Admin record not found. Please register your school account first.');
           setIsLoading(false);
         }
       } else {
         // Student Login via Portal ID
-        const q = query(collection(db, 'students'), where('portalId', '==', portalId.trim()));
+        const studentsRef = collection(db, 'students');
+        const q = query(studentsRef, where('portalId', '==', portalId));
         const querySnapshot = await getDocs(q);
-        
+
         if (!querySnapshot.empty) {
-          const studentDoc = querySnapshot.docs[0];
-          onLogin(true, 'Student', { id: studentDoc.id, ...studentDoc.data() } as Student);
+          const studentData = { id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() } as Student;
+          onLogin(true, 'Student', studentData);
         } else {
-          setError('Invalid Student Portal ID. Please check and try again.');
+          setError('Invalid Portal ID. Please check and try again.');
           setIsLoading(false);
         }
       }
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'Authentication failed. Please check your credentials.');
+      console.error('Login error:', err);
+      setError(err.message || 'Failed to login. Please check your credentials.');
       setIsLoading(false);
     }
   };
@@ -63,42 +88,32 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onSwitchToRegister }) =>
       <div className="w-full max-w-md animate-in fade-in slide-in-from-bottom duration-500">
         <div className="bg-white rounded-[2.5rem] shadow-2xl shadow-slate-200 border border-slate-100 overflow-hidden">
           {/* Header */}
-          <div className="p-8 pt-10 text-center bg-gradient-to-b from-slate-50 to-white">
-            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-white font-black text-3xl shadow-xl mx-auto mb-6 transition-colors ${
-              loginType === 'Admin' ? 'bg-green-600 shadow-green-200' : 'bg-indigo-600 shadow-indigo-200'
-            }`}>
-              SMS
+          <div className="p-8 pt-10 text-center bg-gradient-to-b from-indigo-50/50 to-white">
+            <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white font-black text-3xl shadow-xl shadow-indigo-200 mx-auto mb-6">
+              APS
             </div>
-            <h1 className="text-2xl font-black text-slate-800 tracking-tight">
-              {loginType === 'Admin' ? 'Admin Portal' : 'Student Portal'}
-            </h1>
-            <p className="text-slate-400 text-sm font-medium mt-1">
-              {loginType === 'Admin' ? 'Sign in to manage your school' : 'Enter your ID to access your records'}
-            </p>
+            <h1 className="text-2xl font-black text-slate-800 tracking-tight">Welcome Back</h1>
+            <p className="text-slate-400 text-sm font-medium mt-1">Sign in to Ali Public School Portal</p>
           </div>
 
-          {/* Login Type Toggle */}
-          <div className="px-8 pb-2">
-            <div className="flex p-1 bg-slate-100 rounded-2xl">
-              <button
-                type="button"
-                onClick={() => { setLoginType('Admin'); setError(''); }}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-                  loginType === 'Admin' ? 'bg-white text-green-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'
-                }`}
-              >
-                <UserCircle size={16} /> Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => { setLoginType('Student'); setError(''); }}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
-                  loginType === 'Student' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'
-                }`}
-              >
-                <GraduationCap size={16} /> Student
-              </button>
-            </div>
+          {/* Login Type Switcher */}
+          <div className="px-8 flex p-1 bg-slate-100 rounded-2xl mx-8 mt-2">
+            <button
+              onClick={() => setLoginType('Admin')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black transition-all ${
+                loginType === 'Admin' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <Users size={14} /> Admin
+            </button>
+            <button
+              onClick={() => setLoginType('Student')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-black transition-all ${
+                loginType === 'Student' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <GraduationCap size={14} /> Student
+            </button>
           </div>
 
           {/* Form */}
@@ -115,7 +130,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onSwitchToRegister }) =>
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
                   <div className="relative group">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-green-600 transition-colors">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors">
                       <Mail size={18} />
                     </div>
                     <input 
@@ -123,8 +138,8 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onSwitchToRegister }) =>
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full pl-12 pr-4 py-4 rounded-2xl border-2 border-slate-50 bg-slate-50/30 text-slate-800 font-bold text-sm focus:border-green-500 focus:bg-white outline-none transition-all placeholder:text-slate-300"
-                      placeholder="admin@school.edu"
+                      className="w-full pl-12 pr-4 py-4 rounded-2xl border-2 border-slate-50 bg-slate-50/30 text-slate-800 font-bold text-sm focus:border-indigo-500 focus:bg-white outline-none transition-all placeholder:text-slate-300"
+                      placeholder="admin@aps.edu"
                     />
                   </div>
                 </div>
@@ -132,7 +147,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onSwitchToRegister }) =>
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Password</label>
                   <div className="relative group">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-green-600 transition-colors">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors">
                       <Lock size={18} />
                     </div>
                     <input 
@@ -140,7 +155,7 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onSwitchToRegister }) =>
                       type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full pl-12 pr-12 py-4 rounded-2xl border-2 border-slate-50 bg-slate-50/30 text-slate-800 font-bold text-sm focus:border-green-500 focus:bg-white outline-none transition-all placeholder:text-slate-300"
+                      className="w-full pl-12 pr-12 py-4 rounded-2xl border-2 border-slate-50 bg-slate-50/30 text-slate-800 font-bold text-sm focus:border-indigo-500 focus:bg-white outline-none transition-all placeholder:text-slate-300"
                       placeholder="••••••••"
                     />
                     <button 
@@ -164,21 +179,19 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onSwitchToRegister }) =>
                     required
                     type="text"
                     value={portalId}
-                    onChange={(e) => setPortalId(e.target.value)}
+                    onChange={(e) => setPortalId(e.target.value.toUpperCase())}
                     className="w-full pl-12 pr-4 py-4 rounded-2xl border-2 border-slate-50 bg-slate-50/30 text-slate-800 font-bold text-sm focus:border-indigo-500 focus:bg-white outline-none transition-all placeholder:text-slate-300"
-                    placeholder="SCHOOL-ID-101"
+                    placeholder="APS-G5-101"
                   />
                 </div>
-                <p className="text-[10px] text-slate-400 font-medium ml-1">Ask your school administrator for your unique Portal ID.</p>
+                <p className="text-[10px] text-slate-400 font-bold mt-2 ml-1">Enter the Portal ID provided by your school administration.</p>
               </div>
             )}
 
             <button 
               type="submit"
               disabled={isLoading}
-              className={`w-full py-5 text-white rounded-2xl text-sm font-black shadow-xl transition-all hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-70 ${
-                loginType === 'Admin' ? 'bg-green-600 hover:bg-green-700 shadow-green-500/20' : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20'
-              }`}
+              className="w-full py-5 bg-indigo-600 text-white rounded-2xl text-sm font-black hover:bg-indigo-700 shadow-xl shadow-indigo-500/20 transition-all hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-70 disabled:hover:translate-y-0"
             >
               {isLoading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -188,24 +201,25 @@ const LoginForm: React.FC<LoginFormProps> = ({ onLogin, onSwitchToRegister }) =>
                 </>
               )}
             </button>
-            
+
             {loginType === 'Admin' && (
               <div className="text-center pt-2">
                 <button 
                   type="button"
                   onClick={onSwitchToRegister}
-                  className="text-xs font-bold text-slate-400 hover:text-green-600 transition-colors"
+                  className="text-xs font-bold text-slate-500 hover:text-indigo-600 transition-colors"
                 >
-                  Don't have an account? <span className="underline">Register Now</span>
+                  Don't have an account? <span className="text-indigo-600 font-black">Register School</span>
                 </button>
               </div>
             )}
           </form>
 
+          {/* Footer Info */}
           <div className="px-8 pb-10 text-center">
             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed">
               Proprietary Management Software<br />
-              © 2024 School Management Systems
+              © 2024 Ali Public School Systems
             </p>
           </div>
         </div>

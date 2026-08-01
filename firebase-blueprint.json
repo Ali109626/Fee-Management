@@ -1,0 +1,86 @@
+{
+  "entities": {
+    "Admin": {
+      "title": "Admin",
+      "description": "School administrator profile",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "schoolName": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["name", "email", "schoolName"]
+    },
+    "Student": {
+      "title": "Student",
+      "description": "Student record in a school",
+      "type": "object",
+      "properties": {
+        "adminId": { "type": "string" },
+        "name": { "type": "string" },
+        "fatherName": { "type": "string" },
+        "phone": { "type": "string" },
+        "address": { "type": "string" },
+        "image": { "type": "string" },
+        "grade": { "type": "string" },
+        "section": { "type": "string" },
+        "rollNumber": { "type": "string" },
+        "portalId": { "type": "string" },
+        "admissionDate": { "type": "string" },
+        "monthlyFee": { "type": "number" }
+      },
+      "required": ["adminId", "name", "fatherName", "phone", "grade", "section", "rollNumber", "portalId"]
+    },
+    "FeeRecord": {
+      "title": "FeeRecord",
+      "description": "Student fee payment record",
+      "type": "object",
+      "properties": {
+        "adminId": { "type": "string" },
+        "studentId": { "type": "string" },
+        "month": { "type": "string" },
+        "year": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "paidAmount": { "type": "number" },
+        "paymentDate": { "type": "string" },
+        "method": { "type": "string" },
+        "status": { "type": "string" },
+        "receiptNumber": { "type": "string" },
+        "remarks": { "type": "string" }
+      },
+      "required": ["adminId", "studentId", "month", "year", "totalAmount", "paidAmount", "status"]
+    },
+    "FeeType": {
+      "title": "FeeType",
+      "description": "Custom fee type definition",
+      "type": "object",
+      "properties": {
+        "adminId": { "type": "string" },
+        "name": { "type": "string" },
+        "amount": { "type": "number" },
+        "category": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "required": ["adminId", "name", "amount", "category"]
+    }
+  },
+  "firestore": {
+    "/admins/{adminId}": {
+      "schema": "Admin",
+      "description": "School administrator profiles"
+    },
+    "/students/{studentId}": {
+      "schema": "Student",
+      "description": "Student directory records"
+    },
+    "/fees/{feeId}": {
+      "schema": "FeeRecord",
+      "description": "Student fee records"
+    },
+    "/feeTypes/{feeTypeId}": {
+      "schema": "FeeType",
+      "description": "Custom fee configuration types"
+    }
+  }
+}

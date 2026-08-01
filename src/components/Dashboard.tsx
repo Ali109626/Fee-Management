@@ -19,6 +19,7 @@ import {
   Pie,
   Cell
 } from 'recharts';
+import { MONTHS } from '../constants';
 import { Student, FeeRecord, PaymentStatus, DashboardStats } from '../types';
 import { getFinancialInsights } from '../services/geminiService';
 
@@ -44,14 +45,26 @@ const Dashboard: React.FC<DashboardProps> = ({ students, fees }) => {
     };
   }, [students, fees]);
 
-  const chartData = [
-    { name: 'Jan', collected: 40000, pending: 24000 },
-    { name: 'Feb', collected: 30000, pending: 13980 },
-    { name: 'Mar', collected: 20000, pending: 98000 },
-    { name: 'Apr', collected: 27800, pending: 39080 },
-    { name: 'May', collected: 18900, pending: 48000 },
-    { name: 'Jun', collected: 23900, pending: 38000 },
-  ];
+  const chartData = React.useMemo(() => {
+    const currentMonthIdx = new Date().getMonth();
+    const last6Months = [];
+    
+    for (let i = 5; i >= 0; i--) {
+      const idx = (currentMonthIdx - i + 12) % 12;
+      const month = MONTHS[idx];
+      const monthFees = fees.filter(f => f.month === month);
+      const collected = monthFees.reduce((sum, f) => sum + f.paidAmount, 0);
+      const pending = monthFees.reduce((sum, f) => sum + (f.totalAmount - f.paidAmount), 0);
+      
+      last6Months.push({
+        name: month.substring(0, 3),
+        collected,
+        pending
+      });
+    }
+    
+    return last6Months;
+  }, [fees]);
 
   const pieData = [
     { name: 'Paid', value: fees.filter(f => f.status === PaymentStatus.PAID).length },
@@ -117,7 +130,8 @@ const Dashboard: React.FC<DashboardProps> = ({ students, fees }) => {
                   cursor={{fill: '#f8fafc'}}
                   contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px'}}
                 />
-                <Bar dataKey="collected" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={20} />
+                <Bar dataKey="collected" name="Collected" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={20} />
+                <Bar dataKey="pending" name="Pending" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={20} />
               </BarChart>
             </ResponsiveContainer>
           </div>

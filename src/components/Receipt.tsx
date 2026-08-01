@@ -141,10 +141,29 @@ const Receipt: React.FC<ReceiptProps> = ({ fee, student, onClose, schoolName }) 
               </div>
 
               <div className="bg-slate-50 rounded-2xl p-6 mb-8 border border-slate-100">
-                <div className="flex justify-between items-center mb-4">
+                <div className="flex justify-between items-center mb-2">
                   <span className="text-xs font-bold text-slate-500">Monthly Tuition Fee</span>
+                  <span className="text-sm font-black text-slate-800">Rs. {(fee.totalAmount - (fee.charges?.reduce((s, c) => s + c.amount, 0) || 0)).toLocaleString()}</span>
+                </div>
+                
+                {fee.charges && fee.charges.length > 0 && (
+                  <div className="space-y-2 mt-2 pt-2 border-t border-slate-200">
+                    {fee.charges.map(charge => (
+                      <div key={charge.id} className="flex justify-between items-center">
+                        <span className="text-xs font-bold text-slate-500">{charge.name}</span>
+                        <span className="text-sm font-black text-slate-800">Rs. {charge.amount.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="h-[1px] bg-slate-200 my-4 border-t border-dashed" />
+                
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-xs font-black uppercase tracking-widest">Total Bill</span>
                   <span className="text-sm font-black text-slate-800">Rs. {fee.totalAmount.toLocaleString()}</span>
                 </div>
+
                 <div className="flex justify-between items-center mb-4 text-emerald-600">
                   <span className="text-xs font-bold">Amount Paid</span>
                   <span className="text-sm font-black">Rs. {fee.paidAmount.toLocaleString()}</span>
@@ -221,12 +240,20 @@ const Receipt: React.FC<ReceiptProps> = ({ fee, student, onClose, schoolName }) 
             </thead>
             <tbody>
               <tr className="border-t-2 border-slate-100">
-                <td className="py-6 px-6">
-                  <p className="font-black text-lg">Monthly School Fee</p>
-                  <p className="text-[10px] text-slate-500 italic">Tuition and academic services for {fee.month}</p>
+                <td className="py-4 px-6">
+                  <p className="font-black text-base">Monthly School Fee</p>
+                  <p className="text-[10px] text-slate-500 italic">Academic services for {fee.month}</p>
                 </td>
-                <td className="py-6 px-6 text-right font-black text-xl">Rs. {fee.totalAmount.toLocaleString()}</td>
+                <td className="py-4 px-6 text-right font-black text-base">Rs. {(fee.totalAmount - (fee.charges?.reduce((s, c) => s + c.amount, 0) || 0)).toLocaleString()}</td>
               </tr>
+              {fee.charges?.map(charge => (
+                <tr key={charge.id} className="border-t border-slate-100">
+                  <td className="py-4 px-6">
+                    <p className="font-black text-base">{charge.name}</p>
+                  </td>
+                  <td className="py-4 px-6 text-right font-black text-base">Rs. {charge.amount.toLocaleString()}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
 

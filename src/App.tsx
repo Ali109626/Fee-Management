@@ -4,14 +4,15 @@ import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
 import StudentList from './components/StudentList';
 import FeeManagement from './components/FeeManagement';
+import FeeSetup from './components/FeeSetup';
 import Reports from './components/Reports';
 import Receipt from './components/Receipt';
 import LoginForm from './components/LoginForm';
 import RegisterForm from './components/RegisterForm';
 import StudentPortal from './components/StudentPortal';
-import { Student, FeeRecord, UserRole, Admin } from './types';
+import { Student, FeeRecord, UserRole, Admin, FeeType } from './types';
 import { INITIAL_STUDENTS, INITIAL_FEES } from './constants';
-import { auth, db, isFirebaseConfigured } from './services/firebase';
+import { auth, db, isFirebaseConfigured, handleFirestoreError, OperationType } from './services/firebase';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { 
   collection, 
@@ -39,6 +40,7 @@ const App: React.FC = () => {
   
   const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [allFees, setAllFees] = useState<FeeRecord[]>([]);
+  const [allFeeTypes, setAllFeeTypes] = useState<FeeType[]>([]);
 
   // Configuration check
   if (!isFirebaseConfigured) {
@@ -89,23 +91,51 @@ const App: React.FC = () => {
 
   // Auth State Listener
   useEffect(() => {
-    if (!isFirebaseConfigured) return;
+    if (!isFirebaseConfigured) {
+      setIsLoading(false);
+      return;
+    }
+
+    // Safety timeout: if Firebase doesn't respond in 5 seconds, stop loading
+    const timeoutId = setTimeout(() => {
+      if (isLoading) {
+        console.warn("Firebase auth state listener timed out. Proceeding to login.");
+        setIsLoading(false);
+      }
+    }, 5000);
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      clearTimeout(timeoutId);
       if (user) {
         // Fetch admin details from Firestore
-        const adminDoc = await getDoc(doc(db, 'admins', user.uid));
-        if (adminDoc.exists()) {
-          setCurrentAdmin({ id: user.uid, ...adminDoc.data() } as Admin);
-          setIsAuthenticated(true);
-          setRole('Admin');
-        } else {
-          // If admin doc doesn't exist but user is logged in (shouldn't happen normally)
-          setIsAuthenticated(false);
-          setCurrentAdmin(null);
+        try {
+          const adminDoc = await getDoc(doc(db, 'admins', user.uid));
+          if (adminDoc.exists()) {
+            const adminData = { id: user.uid, ...adminDoc.data() } as Admin;
+            setCurrentAdmin(adminData);
+            localStorage.setItem('school_admin_user', JSON.stringify(adminData));
+            setIsAuthenticated(true);
+            setRole('Admin');
+          } else {
+            setIsAuthenticated(false);
+            setCurrentAdmin(null);
+          }
+        } catch (e) {
+          console.error("Error loading admin profile from Firestore:", e);
         }
       } else {
-        // Check if we are in Student mode (Student mode doesn't use Firebase Auth)
-        if (role !== 'Student') {
+        // Fallback to local session storage if logged in via direct Firestore mode
+        const savedAdmin = localStorage.getItem('school_admin_user');
+        if (savedAdmin && role === 'Admin') {
+          try {
+            const parsed = JSON.parse(savedAdmin);
+            setCurrentAdmin(parsed);
+            setIsAuthenticated(true);
+          } catch (e) {
+            setIsAuthenticated(false);
+            setCurrentAdmin(null);
+          }
+        } else if (role !== 'Student') {
           setIsAuthenticated(false);
           setCurrentAdmin(null);
         }
@@ -135,20 +165,33 @@ const App: React.FC = () => {
 
     const studentsQuery = query(collection(db, 'students'), where('adminId', '==', adminIdToListen));
     const feesQuery = query(collection(db, 'fees'), where('adminId', '==', adminIdToListen));
+    const feeTypesQuery = query(collection(db, 'feeTypes'), where('adminId', '==', adminIdToListen));
 
     const unsubStudents = onSnapshot(studentsQuery, (snapshot) => {
       const studentsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Student));
       setAllStudents(studentsData);
+    }, (err) => {
+      handleFirestoreError(err, OperationType.LIST, 'students');
     });
 
     const unsubFees = onSnapshot(feesQuery, (snapshot) => {
       const feesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FeeRecord));
       setAllFees(feesData);
+    }, (err) => {
+      handleFirestoreError(err, OperationType.LIST, 'fees');
+    });
+
+    const unsubFeeTypes = onSnapshot(feeTypesQuery, (snapshot) => {
+      const feeTypesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FeeType));
+      setAllFeeTypes(feeTypesData);
+    }, (err) => {
+      handleFirestoreError(err, OperationType.LIST, 'feeTypes');
     });
 
     return () => {
       unsubStudents();
       unsubFees();
+      unsubFeeTypes();
     };
   }, [currentAdmin, currentStudent, role]);
 
@@ -169,10 +212,16 @@ const App: React.FC = () => {
     return allFees.filter(f => f.adminId === currentAdmin.id);
   }, [allFees, currentAdmin, role, currentStudent]);
 
+  const feeTypes = useMemo(() => {
+    if (!currentAdmin) return [];
+    return allFeeTypes.filter(ft => ft.adminId === currentAdmin.id);
+  }, [allFeeTypes, currentAdmin]);
+
   const [activeReceiptFeeId, setActiveReceiptFeeId] = useState<string | null>(null);
 
   const handleRegister = (adminData: Admin) => {
     setCurrentAdmin(adminData);
+    localStorage.setItem('school_admin_user', JSON.stringify(adminData));
     setRole('Admin');
     setIsAuthenticated(true);
   };
@@ -181,6 +230,7 @@ const App: React.FC = () => {
     setRole(userRole);
     if (userRole === 'Admin' && adminData) {
       setCurrentAdmin(adminData);
+      localStorage.setItem('school_admin_user', JSON.stringify(adminData));
     }
     if (userRole === 'Student' && studentData) {
       setCurrentStudent(studentData);
@@ -190,9 +240,12 @@ const App: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    if (role === 'Admin') {
-      await signOut(auth);
-    }
+    try {
+      if (role === 'Admin') {
+        await signOut(auth);
+      }
+    } catch (e) {}
+    localStorage.removeItem('school_admin_user');
     setIsAuthenticated(false);
     setRole('Admin');
     setCurrentAdmin(null);
@@ -204,9 +257,18 @@ const App: React.FC = () => {
     return name.split(' ').map(word => word[0]).join('').substring(0, 3).toUpperCase();
   };
 
-  const handleAddStudent = async (studentData: Omit<Student, 'id' | 'portalId' | 'adminId'>) => {
-    if (!currentAdmin) return;
+  const handleAddStudent = async (studentData: Omit<Student, 'id' | 'portalId' | 'adminId'>): Promise<boolean> => {
+    if (!currentAdmin) return false;
+    
     const rollNum = studentData.rollNumber || `R-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+    
+    // Check for duplicate roll number
+    const isDuplicate = allStudents.some(s => s.adminId === currentAdmin.id && s.rollNumber === rollNum);
+    if (isDuplicate) {
+      alert(`Error: A student with Roll Number ${rollNum} already exists in this school.`);
+      return false;
+    }
+
     const prefix = getInitials(currentAdmin.schoolName);
     const id = `ST-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
     const newStudent: Student = {
@@ -219,17 +281,28 @@ const App: React.FC = () => {
     
     await setDoc(doc(db, 'students', id), newStudent);
     alert(`Student Added Successfully!\n\nStudent Portal ID: ${newStudent.portalId}\n\nPlease share this ID with the student for portal access.`);
+    return true;
   };
 
-  const handleUpdateStudent = async (id: string, studentData: Omit<Student, 'id' | 'portalId' | 'adminId'>) => {
-    if (!currentAdmin) return;
-    const prefix = getInitials(currentAdmin.schoolName);
+  const handleUpdateStudent = async (id: string, studentData: Omit<Student, 'id' | 'portalId' | 'adminId'>): Promise<boolean> => {
+    if (!currentAdmin) return false;
+    
     const rollNum = studentData.rollNumber;
+
+    // Check for duplicate roll number (excluding the current student)
+    const isDuplicate = allStudents.some(s => s.adminId === currentAdmin.id && s.rollNumber === rollNum && s.id !== id);
+    if (isDuplicate) {
+      alert(`Error: A student with Roll Number ${rollNum} already exists in this school.`);
+      return false;
+    }
+
+    const prefix = getInitials(currentAdmin.schoolName);
     const updates = {
       ...studentData,
       portalId: `${prefix}-${rollNum}`
     };
     await updateDoc(doc(db, 'students', id), updates);
+    return true;
   };
 
   const handleDeleteStudent = async (id: string) => {
@@ -260,6 +333,28 @@ const App: React.FC = () => {
 
   const handleUpdateFee = async (id: string, updates: Partial<FeeRecord>) => {
     await updateDoc(doc(db, 'fees', id), updates);
+  };
+
+  const handleAddFeeType = async (feeTypeData: Omit<FeeType, 'id' | 'adminId'>) => {
+    if (!currentAdmin) return;
+    const id = `FT-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+    const newFeeType: FeeType = {
+      ...feeTypeData,
+      adminId: currentAdmin.id,
+      id
+    };
+    await setDoc(doc(db, 'feeTypes', id), newFeeType);
+  };
+
+  const handleUpdateFeeType = async (id: string, updates: Partial<FeeType>) => {
+    await updateDoc(doc(db, 'feeTypes', id), updates);
+  };
+
+  const handleDeleteFeeType = async (id: string) => {
+    const isConfirmed = confirm('Are you sure you want to delete this fee type?');
+    if (isConfirmed) {
+      await deleteDoc(doc(db, 'feeTypes', id));
+    }
   };
 
   const currentReceiptData = useMemo(() => {
@@ -310,10 +405,20 @@ const App: React.FC = () => {
           <FeeManagement 
             students={students} 
             fees={fees} 
+            feeTypes={feeTypes}
             searchTerm={searchTerm} 
             onAddFee={handleAddFee} 
             onUpdateFee={handleUpdateFee}
             onShowReceipt={(id) => setActiveReceiptFeeId(id)}
+          />
+        );
+      case 'fee-setup':
+        return (
+          <FeeSetup 
+            feeTypes={feeTypes}
+            onAddFeeType={handleAddFeeType}
+            onUpdateFeeType={handleUpdateFeeType}
+            onDeleteFeeType={handleDeleteFeeType}
           />
         );
       case 'reports':

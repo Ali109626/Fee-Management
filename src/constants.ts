@@ -1,7 +1,12 @@
 
 import { Student, FeeRecord, PaymentStatus } from './types';
 
-export const GRADES = ['Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'];
+export const GRADES = [
+  'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 
+  'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10',
+  '1st Year (FA)', '1st Year (ICS)', '1st Year (FSC)',
+  '2nd Year (FA)', '2nd Year (ICS)', '2nd Year (FSC)'
+];
 export const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 export const GRADE_FEES: Record<string, number> = {
@@ -15,6 +20,12 @@ export const GRADE_FEES: Record<string, number> = {
   'Grade 8': 3500,
   'Grade 9': 4000,
   'Grade 10': 4500,
+  '1st Year (FA)': 5000,
+  '1st Year (ICS)': 5000,
+  '1st Year (FSC)': 5000,
+  '2nd Year (FA)': 5500,
+  '2nd Year (ICS)': 5500,
+  '2nd Year (FSC)': 5500,
 };
 
 export const INITIAL_STUDENTS: Student[] = [

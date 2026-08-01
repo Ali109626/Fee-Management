@@ -9,7 +9,8 @@ import {
   Bell, 
   Menu, 
   X,
-  Search
+  Search,
+  Settings
 } from 'lucide-react';
 import { UserRole } from '../types';
 
@@ -49,6 +50,7 @@ const Layout: React.FC<LayoutProps> = ({
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'students', label: 'Students', icon: Users },
     { id: 'fees', label: 'Fee Management', icon: Wallet },
+    { id: 'fee-setup', label: 'Fee Setup', icon: Settings },
     { id: 'reports', label: 'Reports', icon: FileText },
   ];
 

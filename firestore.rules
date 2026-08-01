@@ -1,0 +1,25 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Admins collection: allow read/write for auth & fallback admin sign-in/registration
+    match /admins/{adminId} {
+      allow read, write: if true;
+    }
+
+    // Students collection: allow read/write for admin management and student portal
+    match /students/{studentId} {
+      allow read, write: if true;
+    }
+
+    // Fees collection: allow read/write for fee management and receipt generation
+    match /fees/{feeId} {
+      allow read, write: if true;
+    }
+
+    // Fee Types collection: allow read/write for custom charges configuration
+    match /feeTypes/{feeTypeId} {
+      allow read, write: if true;
+    }
+  }
+}

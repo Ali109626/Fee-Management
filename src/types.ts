@@ -35,6 +35,21 @@ export interface Student {
   monthlyFee: number;
 }
 
+export interface FeeType {
+  id: string;
+  adminId: string;
+  name: string;
+  amount: number;
+  category: 'Monthly' | 'One-time';
+  description?: string;
+}
+
+export interface Charge {
+  id: string;
+  name: string;
+  amount: number;
+}
+
 export interface FeeRecord {
   id: string;
   adminId: string; // To associate with a specific school/admin
@@ -48,6 +63,7 @@ export interface FeeRecord {
   status: PaymentStatus;
   receiptNumber?: string;
   remarks?: string;
+  charges?: Charge[];
 }
 
 export type UserRole = 'Admin' | 'Accountant' | 'Staff' | 'Student';

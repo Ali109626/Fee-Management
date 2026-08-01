@@ -65,17 +65,32 @@ const Reports: React.FC<ReportsProps> = ({ students, fees }) => {
   const totalCollected = studentLedgers.reduce((sum, l) => sum + l.totalPaid, 0);
 
   const handleExportCSV = () => {
-    const headers = ['Roll No', 'Name', 'Grade', 'Paid Months', 'Pending Months', 'Total Due', 'Total Paid', 'Remaining Balance'];
-    const rows = studentLedgers.map(l => [
-      `"${l.student.rollNumber}"`,
-      `"${l.student.name}"`,
-      `"${l.student.grade}"`,
-      `"${l.paidMonths.join(', ')}"`,
-      `"${l.pendingMonths.map(p => `${p.month} (Rs. ${p.amount})`).join(', ')}"`,
-      l.totalDue,
-      l.totalPaid,
-      l.balance
-    ]);
+    const headers = ['Roll No', 'Name', 'Grade', 'Paid Months', 'Pending Months', 'Charges Breakdown', 'Total Due', 'Total Paid', 'Remaining Balance'];
+    const rows = studentLedgers.map(l => {
+      const studentFees = fees.filter(f => f.studentId === l.student.id);
+      const chargesSummary = studentFees
+        .flatMap(f => f.charges || [])
+        .reduce((acc: Record<string, number>, c) => {
+          acc[c.name] = (acc[c.name] || 0) + c.amount;
+          return acc;
+        }, {});
+      
+      const chargesStr = Object.entries(chargesSummary)
+        .map(([name, amount]) => `${name}: Rs. ${amount}`)
+        .join(' | ');
+
+      return [
+        `"${l.student.rollNumber}"`,
+        `"${l.student.name}"`,
+        `"${l.student.grade}"`,
+        `"${l.paidMonths.join(', ')}"`,
+        `"${l.pendingMonths.map(p => `${p.month} (Rs. ${p.amount})`).join(', ')}"`,
+        `"${chargesStr}"`,
+        l.totalDue,
+        l.totalPaid,
+        l.balance
+      ];
+    });
 
     const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
